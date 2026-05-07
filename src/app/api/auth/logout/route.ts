@@ -1,7 +1,5 @@
-import { cookies } from 'next/headers'
-
 export async function POST() {
-  const cookieStore = await cookies()
-  cookieStore.delete('session')
-  return Response.json({ success: true })
+  const res = Response.json({ success: true })
+  res.headers.set('Set-Cookie', 'session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0')
+  return res
 }

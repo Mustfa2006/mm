@@ -1,19 +1,25 @@
-import { redirect } from 'next/navigation'
-import { cookies } from 'next/headers'
+'use client'
 
-export default async function HomePage() {
-  const cookieStore = await cookies()
-  const session = cookieStore.get('session')
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
-  if (session) {
-    try {
-      const data = JSON.parse(session.value)
-      if (data.role === 'admin') redirect('/admin/orders')
-      if (data.role === 'trader') redirect('/trader/orders')
-    } catch {
-      // Invalid session
-    }
-  }
+export default function HomePage() {
+  const router = useRouter()
 
-  redirect('/login')
+  useEffect(() => {
+    fetch('/api/auth/session')
+      .then(r => r.json())
+      .then(data => {
+        if (data.role === 'admin') router.push('/admin/orders')
+        else if (data.role === 'trader') router.push('/trader/orders')
+        else router.push('/login')
+      })
+      .catch(() => router.push('/login'))
+  }, [router])
+
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
 }

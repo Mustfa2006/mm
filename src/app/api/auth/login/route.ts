@@ -1,4 +1,3 @@
-import { cookies } from 'next/headers'
 import { createServiceClient } from '@/lib/supabase'
 
 export async function POST(request: Request) {
@@ -14,18 +13,12 @@ export async function POST(request: Request) {
       username === process.env.ADMIN_USERNAME &&
       password === process.env.ADMIN_PASSWORD
     ) {
-      const cookieStore = await cookies()
-      cookieStore.set('session', JSON.stringify({ role: 'admin', id: 'admin' }), {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
-        maxAge: 60 * 60 * 24 * 7,
-      })
-      return Response.json({ role: 'admin' })
+      const res = Response.json({ role: 'admin' })
+      res.headers.set('Set-Cookie', `session=${encodeURIComponent(JSON.stringify({ role: 'admin', id: 'admin' }))}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 7}`)
+      return res
     }
 
-    // Check trader credentials - search by username OR phone
+    // Check trader credentials
     const supabase = createServiceClient()
 
     const { data: traders } = await supabase
@@ -39,18 +32,12 @@ export async function POST(request: Request) {
       return Response.json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة' }, { status: 401 })
     }
 
-    const cookieStore = await cookies()
-    cookieStore.set('session', JSON.stringify({ role: 'trader', id: trader.id, name: trader.name }), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 7,
-    })
-
-    return Response.json({ role: 'trader', name: trader.name })
+    const sessionData = JSON.stringify({ role: 'trader', id: trader.id, name: trader.name })
+    const res = Response.json({ role: 'trader', name: trader.name })
+    res.headers.set('Set-Cookie', `session=${encodeURIComponent(sessionData)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60 * 60 * 24 * 7}`)
+    return res
   } catch (err) {
     console.error('Login error:', err)
-    return Response.json({ error: 'حدث خطأ في الخادم' }, { status: 500 })
+    return Response.json({ error: 'حدث خطأ في الخادم: ' + String(err) }, { status: 500 })
   }
 }

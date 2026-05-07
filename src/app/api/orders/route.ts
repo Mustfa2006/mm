@@ -1,20 +1,19 @@
-import { cookies } from 'next/headers'
 import { createServiceClient } from '@/lib/supabase'
 
-async function getSession() {
-  const cookieStore = await cookies()
-  const session = cookieStore.get('session')
-  if (!session) return null
+function getSessionFromRequest(request: Request) {
+  const cookie = request.headers.get('cookie') || ''
+  const match = cookie.match(/session=([^;]+)/)
+  if (!match) return null
   try {
-    return JSON.parse(session.value)
+    return JSON.parse(decodeURIComponent(match[1]))
   } catch {
     return null
   }
 }
 
 // GET orders
-export async function GET() {
-  const session = await getSession()
+export async function GET(request: Request) {
+  const session = getSessionFromRequest(request)
   if (!session) {
     return Response.json({ error: 'غير مصرح' }, { status: 403 })
   }
@@ -41,7 +40,7 @@ export async function GET() {
 
 // POST - create order (admin only)
 export async function POST(request: Request) {
-  const session = await getSession()
+  const session = getSessionFromRequest(request)
   if (!session || session.role !== 'admin') {
     return Response.json({ error: 'غير مصرح' }, { status: 403 })
   }
@@ -77,7 +76,7 @@ export async function POST(request: Request) {
 
 // PATCH - update order status (handles profit/balance)
 export async function PATCH(request: Request) {
-  const session = await getSession()
+  const session = getSessionFromRequest(request)
   if (!session) {
     return Response.json({ error: 'غير مصرح' }, { status: 403 })
   }
@@ -175,7 +174,7 @@ export async function PATCH(request: Request) {
 
 // DELETE - delete order (admin only)
 export async function DELETE(request: Request) {
-  const session = await getSession()
+  const session = getSessionFromRequest(request)
   if (!session || session.role !== 'admin') {
     return Response.json({ error: 'غير مصرح' }, { status: 403 })
   }

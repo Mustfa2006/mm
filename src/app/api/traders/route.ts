@@ -1,13 +1,11 @@
-import { cookies } from 'next/headers'
 import { createServiceClient } from '@/lib/supabase'
 
-// Helper to check admin session
-async function isAdmin() {
-  const cookieStore = await cookies()
-  const session = cookieStore.get('session')
-  if (!session) return false
+function isAdmin(request: Request) {
+  const cookie = request.headers.get('cookie') || ''
+  const match = cookie.match(/session=([^;]+)/)
+  if (!match) return false
   try {
-    const data = JSON.parse(session.value)
+    const data = JSON.parse(decodeURIComponent(match[1]))
     return data.role === 'admin'
   } catch {
     return false
@@ -15,8 +13,8 @@ async function isAdmin() {
 }
 
 // GET all traders
-export async function GET() {
-  if (!(await isAdmin())) {
+export async function GET(request: Request) {
+  if (!isAdmin(request)) {
     return Response.json({ error: 'غير مصرح' }, { status: 403 })
   }
 
@@ -35,7 +33,7 @@ export async function GET() {
 
 // POST - create trader
 export async function POST(request: Request) {
-  if (!(await isAdmin())) {
+  if (!isAdmin(request)) {
     return Response.json({ error: 'غير مصرح' }, { status: 403 })
   }
 
@@ -62,7 +60,7 @@ export async function POST(request: Request) {
 
 // PUT - update trader
 export async function PUT(request: Request) {
-  if (!(await isAdmin())) {
+  if (!isAdmin(request)) {
     return Response.json({ error: 'غير مصرح' }, { status: 403 })
   }
 
@@ -90,7 +88,7 @@ export async function PUT(request: Request) {
 
 // DELETE - delete trader
 export async function DELETE(request: Request) {
-  if (!(await isAdmin())) {
+  if (!isAdmin(request)) {
     return Response.json({ error: 'غير مصرح' }, { status: 403 })
   }
 
