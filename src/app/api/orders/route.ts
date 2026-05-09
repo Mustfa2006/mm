@@ -108,52 +108,34 @@ export async function PATCH(request: Request) {
   if (profit > 0) {
     // Was delivered, now something else → subtract profit
     if (oldStatus === 'delivered' && newStatus !== 'delivered') {
-      await supabase.rpc('increment_balance', {
-        trader_uuid: currentOrder.trader_id,
-        amount: -profit,
-      }).then(({ error }) => {
-        if (error) {
-          // Fallback: manual update
-          return supabase
-            .from('traders')
-            .select('balance')
-            .eq('id', currentOrder.trader_id)
-            .single()
-            .then(({ data }) => {
-              if (data) {
-                return supabase
-                  .from('traders')
-                  .update({ balance: Number(data.balance) - profit })
-                  .eq('id', currentOrder.trader_id)
-              }
-            })
-        }
-      })
+      const { data: trader } = await supabase
+        .from('traders')
+        .select('balance')
+        .eq('id', currentOrder.trader_id)
+        .single()
+
+      if (trader) {
+        await supabase
+          .from('traders')
+          .update({ balance: Number(trader.balance) - profit })
+          .eq('id', currentOrder.trader_id)
+      }
     }
 
     // Was NOT delivered, now delivered → add profit
     if (oldStatus !== 'delivered' && newStatus === 'delivered') {
-      await supabase.rpc('increment_balance', {
-        trader_uuid: currentOrder.trader_id,
-        amount: profit,
-      }).then(({ error }) => {
-        if (error) {
-          // Fallback: manual update
-          return supabase
-            .from('traders')
-            .select('balance')
-            .eq('id', currentOrder.trader_id)
-            .single()
-            .then(({ data }) => {
-              if (data) {
-                return supabase
-                  .from('traders')
-                  .update({ balance: Number(data.balance) + profit })
-                  .eq('id', currentOrder.trader_id)
-              }
-            })
-        }
-      })
+      const { data: trader } = await supabase
+        .from('traders')
+        .select('balance')
+        .eq('id', currentOrder.trader_id)
+        .single()
+
+      if (trader) {
+        await supabase
+          .from('traders')
+          .update({ balance: Number(trader.balance) + profit })
+          .eq('id', currentOrder.trader_id)
+      }
     }
   }
 
@@ -161,6 +143,43 @@ export async function PATCH(request: Request) {
   const { data, error } = await supabase
     .from('orders')
     .update({ status: newStatus })
+    .eq('id', body.id)
+    .select('*, traders(name)')
+    .single()
+
+  if (error) {
+    return Response.json({ error: error.message }, { status: 500 })
+  }
+
+  return Response.json(data)
+}
+
+// PUT - update order details (admin only)
+export async function PUT(request: Request) {
+  const session = getSessionFromRequest(request)
+  if (!session || session.role !== 'admin') {
+    return Response.json({ error: 'غير مصرح' }, { status: 403 })
+  }
+
+  const body = await request.json()
+  const supabase = createServiceClient()
+
+  const updateData: Record<string, unknown> = {}
+  if (body.customer_name !== undefined) updateData.customer_name = body.customer_name
+  if (body.phone !== undefined) updateData.phone = body.phone
+  if (body.alt_phone !== undefined) updateData.alt_phone = body.alt_phone
+  if (body.province !== undefined) updateData.province = body.province
+  if (body.city !== undefined) updateData.city = body.city
+  if (body.notes !== undefined) updateData.notes = body.notes
+  if (body.product !== undefined) updateData.product = body.product
+  if (body.quantity !== undefined) updateData.quantity = body.quantity
+  if (body.price !== undefined) updateData.price = body.price
+  if (body.profit !== undefined) updateData.profit = body.profit
+  if (body.trader_id !== undefined) updateData.trader_id = body.trader_id
+
+  const { data, error } = await supabase
+    .from('orders')
+    .update(updateData)
     .eq('id', body.id)
     .select('*, traders(name)')
     .single()

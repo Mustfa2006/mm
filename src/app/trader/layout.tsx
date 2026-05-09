@@ -30,19 +30,22 @@ export default function TraderLayout({ children }: { children: React.ReactNode }
   // Fetch balance
   useEffect(() => {
     if (!traderId) return
-    fetch('/api/traders')
-      .then(r => r.json())
-      .then(() => {
-        // Use session to get balance from a dedicated endpoint
-        fetch(`/api/balance`)
-          .then(r => r.json())
-          .then(data => {
-            if (typeof data.balance === 'number') setBalance(data.balance)
-          })
-          .catch(() => {})
-      })
-      .catch(() => {})
-  }, [traderId, pathname])
+
+    function refreshBalance() {
+      fetch('/api/balance')
+        .then(r => r.json())
+        .then(data => {
+          if (typeof data.balance === 'number') setBalance(data.balance)
+        })
+        .catch(() => {})
+    }
+
+    refreshBalance()
+
+    // Listen for balance update events from child pages
+    window.addEventListener('balance-updated', refreshBalance)
+    return () => window.removeEventListener('balance-updated', refreshBalance)
+  }, [traderId])
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' })
